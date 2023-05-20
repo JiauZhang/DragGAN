@@ -1,0 +1,6 @@
+
+def motion_supervision(F0, pi, r1, ti, M=None):
+    ...
+
+def point_tracking():
+    ...
