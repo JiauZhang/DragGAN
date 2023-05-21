@@ -1,9 +1,12 @@
 import dearpygui.dearpygui as dpg
 import numpy as np
 from array import array
+from stylegan2 import Generator
+import torch
 
 device = 'cpu'
 image_width, image_height, channel = 256, 256, 3
+generator = Generator(256, 512, 8)
 
 dpg.create_context()
 dpg.create_viewport(title='DragGAN', width=800, height=650)
@@ -17,9 +20,12 @@ with dpg.texture_registry(show=False):
 
 def update_image(sender, app_data, user_data):
     count = image_width*image_height*channel
-    noise = np.random.uniform(0, 1, size=(count))
+    with torch.no_grad():
+        z = torch.randn(1, 512)
+        image = generator([z])[0][0].detach().cpu().permute(1, 2, 0).numpy()
+    image = (image / 2 + 0.5).clip(0, 1).reshape(count)
     for i in range(0, count):
-        raw_data[i] = noise[i]
+        raw_data[i] = image[i]
 
 width, height = 200, 200
 posx, posy = 0, 0
@@ -34,8 +40,16 @@ with dpg.window(
 
     dpg.add_text('weight', pos=(5, 40))
 
-    def select_cb(sender, app_data, user_data):
-        ...
+    def select_cb(sender, app_data):
+        selections = app_data['selections']
+        if selections:
+            for fn in selections:
+                fp = selections[fn]
+                print(f'loading checkpoint from {fp}...')
+                ckpt = torch.load(fp, map_location=device)
+                generator.load_state_dict(ckpt["g_ema"], strict=False)
+                print('loading checkpoint successed!')
+                break
 
     def cancel_cb(sender, app_data):
         ...
