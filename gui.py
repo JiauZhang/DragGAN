@@ -33,7 +33,7 @@ def change_device(sender, app_data):
         generator = generator.to(app_data)
         device = app_data
 
-width, height = 200, 200
+width, height = 240, 200
 posx, posy = 0, 0
 with dpg.window(
     label='Network & Latent', width=width, height=height, pos=(posx, posy),
@@ -72,7 +72,15 @@ with dpg.window(
     )
 
     dpg.add_text('latent', pos=(5, 60))
-    dpg.add_button(label="generate", pos=(5, 80), callback=generate_image)
+    dpg.add_input_int(label='seed', width=100, pos=(70, 60))
+    dpg.add_input_float(
+        label='step size', width=54, pos=(70, 80), step=-1, default_value=0.002,
+    )
+    dpg.add_button(label="reset", width=54, pos=(70, 100), callback=None)
+    dpg.add_radio_button(
+        items=('w', 'w+'), pos=(130, 100), horizontal=True, default_value='w+',
+    )
+    dpg.add_button(label="generate", pos=(70, 120), callback=generate_image)
 
 posy += height + 2
 with dpg.window(
@@ -109,7 +117,7 @@ def select_point(sender, app_data):
 posx, posy = 2 + width, 0
 with dpg.window(
     label='Image', pos=(posx, posy), tag='Image Win',
-    no_move=True, no_close=True, no_collapse=True, autosize=True,
+    no_move=True, no_close=True, no_collapse=True, no_resize=True,
 ):
     dpg.add_image("image", show=True, tag='image_data', pos=(10, 30))
 
