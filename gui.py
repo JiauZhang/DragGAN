@@ -33,7 +33,7 @@ def change_device(sender, app_data):
         generator = generator.to(app_data)
         device = app_data
 
-width, height = 240, 200
+width, height = 260, 200
 posx, posy = 0, 0
 with dpg.window(
     label='Network & Latent', width=width, height=height, pos=(posx, posy),
@@ -87,14 +87,28 @@ with dpg.window(
     label='Drag', width=width, height=height, pos=(posx, posy),
     no_move=True, no_close=True, no_collapse=True, no_resize=True,
 ):
-    ...
+    dpg.add_text('drag', pos=(5, 20))
+    dpg.add_button(label="add point", width=80, pos=(70, 20), callback=None)
+    dpg.add_button(label="reset point", width=80, pos=(155, 20), callback=None)
+    dpg.add_button(label="start", width=80, pos=(70, 40), callback=None)
+    dpg.add_button(label="stop", width=80, pos=(155, 40), callback=None)
+    dpg.add_text('steps: 0', tag='steps', pos=(70, 60))
+
+    dpg.add_text('mask', pos=(5, 80))
+    dpg.add_button(label="fixed area", width=80, pos=(70, 80), callback=None)
+    dpg.add_button(label="reset mask", width=80, pos=(70, 100), callback=None)
+    dpg.add_checkbox(label='show mask', pos=(155, 100), default_value=False)
+    dpg.add_input_int(label='radius', width=100, pos=(70, 120), default_value=50)
+    dpg.add_input_float(label='lambda', width=100, pos=(70, 140), default_value=20)
 
 posy += height + 2
 with dpg.window(
     label='Capture', width=width, height=height, pos=(posx, posy),
     no_move=True, no_close=True, no_collapse=True, no_resize=True,
 ):
-    ...
+    dpg.add_text('capture', pos=(5, 20))
+    dpg.add_input_text(pos=(70, 20), default_value='capture')
+    dpg.add_button(label="save image", width=80, pos=(70, 40), callback=None)
 
 def draw_point(x, y, color):
     x_start, x_end = max(0, x - 2), min(image_width, x + 2)
