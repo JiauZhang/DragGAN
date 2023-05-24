@@ -5,6 +5,9 @@ from stylegan2 import Generator
 import torch
 
 device = 'cpu'
+add_point = 0
+point_color = [(1, 0, 0), (0, 0, 1)]
+points = []
 image_width, image_height, channel = 256, 256, 3
 generator = Generator(256, 512, 8)
 
@@ -87,8 +90,12 @@ with dpg.window(
     label='Drag', width=width, height=height, pos=(posx, posy),
     no_move=True, no_close=True, no_collapse=True, no_resize=True,
 ):
+    def add_point_cb():
+        global add_point
+        add_point += 2
+
     dpg.add_text('drag', pos=(5, 20))
-    dpg.add_button(label="add point", width=80, pos=(70, 20), callback=None)
+    dpg.add_button(label="add point", width=80, pos=(70, 20), callback=add_point_cb)
     dpg.add_button(label="reset point", width=80, pos=(155, 20), callback=None)
     dpg.add_button(label="start", width=80, pos=(70, 40), callback=None)
     dpg.add_button(label="stop", width=80, pos=(155, 40), callback=None)
@@ -121,12 +128,16 @@ def draw_point(x, y, color):
             raw_data[offset+2] = color[2]
 
 def select_point(sender, app_data):
+    global add_point, points
+    if add_point <= 0: return
     ms_pos = dpg.get_mouse_pos(local=False)
     id_pos = dpg.get_item_pos('image_data')
     iw_pos = dpg.get_item_pos('Image Win')
     ix = int(ms_pos[0]-id_pos[0]-iw_pos[0])
     iy = int(ms_pos[1]-id_pos[1]-iw_pos[1])
-    draw_point(ix, iy, (1, 0, 0))
+    draw_point(ix, iy, point_color[add_point % 2])
+    points += [ix, iy]
+    add_point -= 1
 
 posx, posy = 2 + width, 0
 with dpg.window(
