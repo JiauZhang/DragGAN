@@ -3,22 +3,30 @@ import numpy as np
 from array import array
 from stylegan2 import Generator
 import torch
+import platform
 
 device = 'cpu'
 add_point = 0
 point_color = [(1, 0, 0), (0, 0, 1)]
 points = []
 image_width, image_height, channel = 256, 256, 3
+texture_format = dpg.mvFormat_Float_rgb
 generator = Generator(256, 512, 8)
 
 dpg.create_context()
 dpg.create_viewport(title='DragGAN', width=800, height=650)
 
+# mvFormat_Float_rgb not currently supported on MacOS
+# More details: https://dearpygui.readthedocs.io/en/latest/documentation/textures.html#formats
+if "macos" in platform.platform().lower():
+    channel = 4
+    texture_format = dpg.mvFormat_Float_rgba
+
 raw_data = array('f', [1]*(image_width*image_height*channel))
 with dpg.texture_registry(show=False):
     dpg.add_raw_texture(
         width=image_width, height=image_height, default_value=raw_data,
-        format=dpg.mvFormat_Float_rgb, tag="image"
+        format=texture_format, tag="image"
     )
 
 def generate_image(sender, app_data, user_data):
