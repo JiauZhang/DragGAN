@@ -5,7 +5,7 @@ Implementation of [DragGAN: Interactive Point-based Manipulation on the Generati
 
 ```shell
 # gui
-pip install dearpygui
+pip install -r requirements.txt
 # run demo
 python gui.py
 ```
