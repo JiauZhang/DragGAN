@@ -3,28 +3,24 @@ import numpy as np
 from array import array
 from stylegan2 import Generator
 import torch
-import platform
 
 device = 'cpu'
 add_point = 0
 point_color = [(1, 0, 0), (0, 0, 1)]
 points = []
+
+# mvFormat_Float_rgb not currently supported on macOS
+# More details: https://dearpygui.readthedocs.io/en/latest/documentation/textures.html#formats
+texture_format = dpg.mvFormat_Float_rgba
 image_width, image_height, rgb_channel, rgba_channel = 256, 256, 3, 4
-texture_format = dpg.mvFormat_Float_rgb
+image_pixels = image_height * image_width
 generator = Generator(256, 512, 8)
 
 dpg.create_context()
 dpg.create_viewport(title='DragGAN', width=800, height=650)
 
-# mvFormat_Float_rgb not currently supported on macOS
-# More details: https://dearpygui.readthedocs.io/en/latest/documentation/textures.html#formats
-if "macos" in platform.platform().lower():
-    channel = rgba_channel
-    texture_format = dpg.mvFormat_Float_rgba
-else:
-    channel = rgb_channel
-
-raw_data = array('f', [1]*(image_width*image_height*channel))
+raw_data_size = image_width * image_height * rgba_channel
+raw_data = array('f', [1] * raw_data_size)
 with dpg.texture_registry(show=False):
     dpg.add_raw_texture(
         width=image_width, height=image_height, default_value=raw_data,
@@ -32,22 +28,14 @@ with dpg.texture_registry(show=False):
     )
 
 def generate_image(sender, app_data, user_data):
-    global raw_data
-    img_count = image_width*image_height*rgb_channel
     with torch.no_grad():
         z = torch.randn(1, 512).to(device)
         image = generator([z])[0][0].detach().cpu().permute(1, 2, 0).numpy()
-    image = (image / 2 + 0.5).clip(0, 1).reshape(img_count)
-    # Convert image data (rgb) to raw_data (rgb or rgba)
-    if "macos" in platform.platform().lower():
-        for i in range(0, img_count):
-            if i % rgb_channel == 0:
-                j = int(i / rgb_channel) * rgba_channel
-            raw_data[j] = image[i]
-            j+=1
-    else:
-        for i in range(0, img_count):
-            raw_data[i] = image[i]
+    image = (image / 2 + 0.5).clip(0, 1).reshape(-1)
+    # Convert image data (rgb) to raw_data (rgba)
+    for i in range(0, image_pixels):
+        rd_base, im_base = i * rgba_channel, i * rgb_channel
+        raw_data[rd_base:rd_base + rgb_channel] = array('f', image[im_base:im_base + rgb_channel])
 
 def change_device(sender, app_data):
     global device, generator
@@ -141,10 +129,8 @@ def draw_point(x, y, color):
     y_start, y_end = max(0, y - 2), min(image_height, y + 2)
     for x in range(x_start, x_end):
         for y in range(y_start, y_end):
-            offset = (y*image_width+x)*channel
-            raw_data[offset] = color[0]
-            raw_data[offset+1] = color[1]
-            raw_data[offset+2] = color[2]
+            offset = (y * image_width + x) * rgba_channel
+            raw_data[offset:offset + rgb_channel] = array('f', color[:rgb_channel])
 
 def select_point(sender, app_data):
     global add_point, points
