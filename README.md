@@ -1,6 +1,6 @@
 <img src="./draggan.png" width="750" alt="Architecture of DragGAN"/>
 
-# DragGAN - WIP
+# DragGAN
 Implementation of [DragGAN: Interactive Point-based Manipulation on the Generative Image Manifold](https://arxiv.org/abs/2305.10973).
 
 ```shell
@@ -12,9 +12,11 @@ python gui.py
 
 <img src="./UI.png" width="600" alt="Demo UI"/>
 
+<img src="./sample/start.png" width="300" alt="Demo Start"/><img src="./sample/end.png" width="300" alt="Demo End"/>
+
 # TODO
 - [x] GUI
-- [ ] drag it - in coming today or tomorrow
+- [x] drag it
 - [ ] load real image
 - [ ] mask
 

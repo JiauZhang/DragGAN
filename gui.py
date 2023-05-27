@@ -1,20 +1,18 @@
 import dearpygui.dearpygui as dpg
 import numpy as np
+from draggan import DragGAN
 from array import array
-from stylegan2 import Generator
-import torch
 
-device = 'cpu'
 add_point = 0
 point_color = [(1, 0, 0), (0, 0, 1)]
-points = []
-
+points, steps = [], 0
+latents, features, F0, layer_idx = None, None, None, 6
 # mvFormat_Float_rgb not currently supported on macOS
 # More details: https://dearpygui.readthedocs.io/en/latest/documentation/textures.html#formats
 texture_format = dpg.mvFormat_Float_rgba
 image_width, image_height, rgb_channel, rgba_channel = 256, 256, 3, 4
 image_pixels = image_height * image_width
-generator = Generator(256, 512, 8)
+model = DragGAN('cpu')
 
 dpg.create_context()
 dpg.create_viewport(title='DragGAN', width=800, height=650)
@@ -28,20 +26,15 @@ with dpg.texture_registry(show=False):
     )
 
 def generate_image(sender, app_data, user_data):
-    with torch.no_grad():
-        z = torch.randn(1, 512).to(device)
-        image = generator([z])[0][0].detach().cpu().permute(1, 2, 0).numpy()
-    image = (image / 2 + 0.5).clip(0, 1).reshape(-1)
+    seed = dpg.get_value('seed')
+    image = model.generate_image(seed)
     # Convert image data (rgb) to raw_data (rgba)
     for i in range(0, image_pixels):
         rd_base, im_base = i * rgba_channel, i * rgb_channel
         raw_data[rd_base:rd_base + rgb_channel] = array('f', image[im_base:im_base + rgb_channel])
 
 def change_device(sender, app_data):
-    global device, generator
-    if app_data != device:
-        generator = generator.to(app_data)
-        device = app_data
+    model.to(app_data)
 
 width, height = 260, 200
 posx, posy = 0, 0
@@ -61,11 +54,7 @@ with dpg.window(
         selections = app_data['selections']
         if selections:
             for fn in selections:
-                fp = selections[fn]
-                print(f'loading checkpoint from {fp}...')
-                ckpt = torch.load(fp, map_location=device)
-                generator.load_state_dict(ckpt["g_ema"], strict=False)
-                print('loading checkpoint successed!')
+                model.load_ckpt(selections[fn])
                 break
 
     def cancel_cb(sender, app_data):
@@ -82,7 +71,9 @@ with dpg.window(
     )
 
     dpg.add_text('latent', pos=(5, 60))
-    dpg.add_input_int(label='seed', width=100, pos=(70, 60))
+    dpg.add_input_int(
+        label='seed', width=100, pos=(70, 60), tag='seed', default_value=512,
+    )
     dpg.add_input_float(
         label='step size', width=54, pos=(70, 80), step=-1, default_value=0.002,
     )
@@ -101,10 +92,28 @@ with dpg.window(
         global add_point
         add_point += 2
 
+    def reset_point_cb():
+        global points
+        points = []
+
+    def start_cb():
+        global points, steps
+        while (True):
+            npi, image = model.step(points)
+            for i in range(0, image_pixels):
+                rd_base, im_base = i * rgba_channel, i * rgb_channel
+                raw_data[rd_base:rd_base + rgb_channel] = array('f', image[im_base:im_base + rgb_channel])
+            print(points[0], npi)
+            points[0] = npi
+            draw_point(*points[0], point_color[0])
+            draw_point(*points[1], point_color[1])
+            steps += 1
+            dpg.set_value('steps', f'steps: {steps}')
+
     dpg.add_text('drag', pos=(5, 20))
     dpg.add_button(label="add point", width=80, pos=(70, 20), callback=add_point_cb)
-    dpg.add_button(label="reset point", width=80, pos=(155, 20), callback=None)
-    dpg.add_button(label="start", width=80, pos=(70, 40), callback=None)
+    dpg.add_button(label="reset point", width=80, pos=(155, 20), callback=reset_point_cb)
+    dpg.add_button(label="start", width=80, pos=(70, 40), callback=start_cb)
     dpg.add_button(label="stop", width=80, pos=(155, 40), callback=None)
     dpg.add_text('steps: 0', tag='steps', pos=(70, 60))
 
@@ -141,7 +150,8 @@ def select_point(sender, app_data):
     ix = int(ms_pos[0]-id_pos[0]-iw_pos[0])
     iy = int(ms_pos[1]-id_pos[1]-iw_pos[1])
     draw_point(ix, iy, point_color[add_point % 2])
-    points += [ix, iy]
+    points.append(np.array([ix, iy]))
+    print(points)
     add_point -= 1
 
 posx, posy = 2 + width, 0
