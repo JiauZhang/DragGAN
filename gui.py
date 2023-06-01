@@ -6,7 +6,6 @@ from array import array
 add_point = 0
 point_color = [(1, 0, 0), (0, 0, 1)]
 points, steps = [], 0
-latents, features, F0, layer_idx = None, None, None, 6
 # mvFormat_Float_rgb not currently supported on macOS
 # More details: https://dearpygui.readthedocs.io/en/latest/documentation/textures.html#formats
 texture_format = dpg.mvFormat_Float_rgba

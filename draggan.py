@@ -45,16 +45,14 @@ def motion_supervision(F0, F, pi, ti, r1=3, M=None):
 def point_tracking(F0, F, pi, p0, r2=12):
     F = functional.interpolate(F, [256, 256], mode="bilinear")
     F0 = functional.interpolate(F0, [256, 256], mode="bilinear")
-    diff = 1e8
-    npi = pi
-    for x in range(pi[0] - r2, pi[0] + r2):
-        for y in range(pi[1] - r2, pi[1] + r2):
-            diff_ = torch.mean(torch.abs(
-                F0[..., p0[1], p0[0]] - F[..., y, x]
-            ))
-            if diff > diff_:
-                diff = diff_
-                npi = (x, y)
+    x = (max(0, pi[0] - r2), min(256, pi[0] + r2))
+    y = (max(0, pi[1] - r2), min(256, pi[1] + r2))
+    base = F0[..., p0[1], p0[0]].reshape(1, -1, 1, 1)
+    diff = (F[..., y[0]:y[1], x[0]:x[1]] - base).abs().mean(1)
+    idx = diff.argmin()
+    dy = int(idx / (x[1] - x[0]))
+    dx = int(idx % (x[1] - x[0]))
+    npi = (x[0] + dx, y[0] + dy)
     return npi
 
 def requires_grad(model, flag=True):
