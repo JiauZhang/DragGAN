@@ -27,17 +27,34 @@ def bilinear(feature, qi, d):
 def motion_supervision(F0, F, pi, ti, r1=3, M=None):
     F = functional.interpolate(F, [256, 256], mode="bilinear")
     F0 = functional.interpolate(F0, [256, 256], mode="bilinear")
-    loss = 0
-    dx, dy = ti[0] - pi[0], ti[1] - pi[1]
-    norm = math.sqrt(dx**2 + dy**2)
-    d = (dx / norm, dy / norm)
 
-    for x in range(pi[0] - r1, pi[0] + r1):
-        for y in range(pi[1] - r1, pi[1] + r1):
-            qi = (x, y)
-            loss += torch.mean(torch.abs(
-                F[..., qi[1], qi[0]].detach() - bilinear(F, qi, d)
-            ))
+    dw, dh = ti[0] - pi[0], ti[1] - pi[1]
+    norm = math.sqrt(dw**2 + dh**2)
+    w = (max(0, pi[0] - r1), min(256, pi[0] + r1))
+    h = (max(0, pi[1] - r1), min(256, pi[1] + r1))
+    d = torch.tensor(
+        (dw / norm, dh / norm),
+        dtype=F.dtype, device=F.device,
+    ).reshape(1, 1, 1, 2)
+    grid_h, grid_w = torch.meshgrid(
+        torch.tensor(range(h[0], h[1])),
+        torch.tensor(range(w[0], w[1])),
+        indexing='xy',
+    )
+    grid = torch.stack([grid_w, grid_h], dim=-1).unsqueeze(0)
+    grid = (grid / 255 - 0.5) * 2
+    grid_d = grid + 2 * d / 255
+
+    sample = functional.grid_sample(
+        F, grid, mode='bilinear', padding_mode='border',
+        align_corners=True,
+    )
+    sample_d = functional.grid_sample(
+        F, grid_d, mode='bilinear', padding_mode='border',
+        align_corners=True,
+    )
+
+    loss = (sample_d - sample.detach()).abs().mean(1).sum()
 
     return loss
 
