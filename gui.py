@@ -2,10 +2,12 @@ import dearpygui.dearpygui as dpg
 import numpy as np
 from draggan import DragGAN
 from array import array
+import threading
 
 add_point = 0
 point_color = [(1, 0, 0), (0, 0, 1)]
 points, steps = [], 0
+dragging = False
 # mvFormat_Float_rgb not currently supported on macOS
 # More details: https://dearpygui.readthedocs.io/en/latest/documentation/textures.html#formats
 texture_format = dpg.mvFormat_Float_rgba
@@ -34,6 +36,20 @@ def generate_image(sender, app_data, user_data):
 
 def change_device(sender, app_data):
     model.to(app_data)
+
+def dragging_thread():
+    global points, steps, dragging
+    while (dragging):
+        npi, image = model.step(points)
+        for i in range(0, image_pixels):
+            rd_base, im_base = i * rgba_channel, i * rgb_channel
+            raw_data[rd_base:rd_base + rgb_channel] = array('f', image[im_base:im_base + rgb_channel])
+        print(points[0], npi)
+        points[0] = npi
+        draw_point(*points[0], point_color[0])
+        draw_point(*points[1], point_color[1])
+        steps += 1
+        dpg.set_value('steps', f'steps: {steps}')
 
 width, height = 260, 200
 posx, posy = 0, 0
@@ -96,24 +112,21 @@ with dpg.window(
         points = []
 
     def start_cb():
-        global points, steps
-        while (True):
-            npi, image = model.step(points)
-            for i in range(0, image_pixels):
-                rd_base, im_base = i * rgba_channel, i * rgb_channel
-                raw_data[rd_base:rd_base + rgb_channel] = array('f', image[im_base:im_base + rgb_channel])
-            print(points[0], npi)
-            points[0] = npi
-            draw_point(*points[0], point_color[0])
-            draw_point(*points[1], point_color[1])
-            steps += 1
-            dpg.set_value('steps', f'steps: {steps}')
+        global dragging
+        if dragging: return
+        dragging = True
+        threading.Thread(target=dragging_thread).start()
+
+    def stop_cb():
+        global dragging
+        dragging = False
+        print('stop_cb...')
 
     dpg.add_text('drag', pos=(5, 20))
     dpg.add_button(label="add point", width=80, pos=(70, 20), callback=add_point_cb)
     dpg.add_button(label="reset point", width=80, pos=(155, 20), callback=reset_point_cb)
     dpg.add_button(label="start", width=80, pos=(70, 40), callback=start_cb)
-    dpg.add_button(label="stop", width=80, pos=(155, 40), callback=None)
+    dpg.add_button(label="stop", width=80, pos=(155, 40), callback=stop_cb)
     dpg.add_text('steps: 0', tag='steps', pos=(70, 60))
 
     dpg.add_text('mask', pos=(5, 80))
