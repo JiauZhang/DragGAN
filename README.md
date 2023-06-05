@@ -12,7 +12,7 @@ python gui.py
 
 <img src="./UI.png" width="600" alt="Demo UI"/>
 
-<img src="./sample/start.png" width="300" alt="Demo Start"/><img src="./sample/end.png" width="300" alt="Demo End"/>
+<img src="./sample/start.png" width="200" alt="Demo Start"/><img src="./sample/end.png" width="200" alt="Demo End"/><img src="./sample/multi-point.png" width="200" alt="Multi Point Control"/>
 
 # TODO
 - [x] GUI

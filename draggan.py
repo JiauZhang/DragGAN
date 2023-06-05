@@ -120,12 +120,17 @@ class DragGAN():
 
     def step(self, points):
         if self.optimizer is None:
+            len_pts = (len(points) // 2) * 2
+            if len_pts == 0:
+                print('Select at least one pair of points')
+                return False, None
             self.trainable = self.latent[:, :self.layer_index*2, :].detach(
             ).requires_grad_(True)
             self.fixed = self.latent[:, self.layer_index*2:, :].detach(
             ).requires_grad_(False)
             self.optimizer = torch.optim.Adam([self.trainable], lr=2e-3)
-            self.p0 = points[0]
+            points = points[:len_pts]
+            self.p0 = points[::2]
         self.optimizer.zero_grad()
         trainable_fixed = torch.cat([self.trainable, self.fixed], dim=1)
         image, _, features = self.generator(
@@ -133,7 +138,9 @@ class DragGAN():
             return_features=True, randomize_noise=False,
         )
         features = features[self.layer_index*2+1]
-        loss = motion_supervision(self.F0, features, points[0], points[1])
+        loss = 0
+        for i in range(len(self.p0)):
+            loss += motion_supervision(self.F0, features, points[2*i], points[2*i+1])
         print(loss)
         loss.backward()
         self.optimizer.step()
@@ -144,5 +151,6 @@ class DragGAN():
         features = features[self.layer_index*2+1]
         image = image[0].detach().cpu().permute(1, 2, 0).numpy()
         image = (image / 2 + 0.5).clip(0, 1).reshape(-1)
-        npi = point_tracking(self.F0, features, points[0], self.p0)
-        return npi, image
+        for i in range(len(self.p0)):
+            points[2*i] = point_tracking(self.F0, features, points[2*i], self.p0[i])
+        return True, (points, image)

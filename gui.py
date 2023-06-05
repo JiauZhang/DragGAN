@@ -26,13 +26,18 @@ with dpg.texture_registry(show=False):
         format=texture_format, tag="image"
     )
 
-def generate_image(sender, app_data, user_data):
-    seed = dpg.get_value('seed')
-    image = model.generate_image(seed)
+def update_image(new_image):
     # Convert image data (rgb) to raw_data (rgba)
     for i in range(0, image_pixels):
         rd_base, im_base = i * rgba_channel, i * rgb_channel
-        raw_data[rd_base:rd_base + rgb_channel] = array('f', image[im_base:im_base + rgb_channel])
+        raw_data[rd_base:rd_base + rgb_channel] = array(
+            'f', new_image[im_base:im_base + rgb_channel]
+        )
+
+def generate_image(sender, app_data, user_data):
+    seed = dpg.get_value('seed')
+    image = model.generate_image(seed)
+    update_image(image)
 
 def change_device(sender, app_data):
     model.to(app_data)
@@ -40,14 +45,15 @@ def change_device(sender, app_data):
 def dragging_thread():
     global points, steps, dragging
     while (dragging):
-        npi, image = model.step(points)
-        for i in range(0, image_pixels):
-            rd_base, im_base = i * rgba_channel, i * rgb_channel
-            raw_data[rd_base:rd_base + rgb_channel] = array('f', image[im_base:im_base + rgb_channel])
-        print(points[0], npi)
-        points[0] = npi
-        draw_point(*points[0], point_color[0])
-        draw_point(*points[1], point_color[1])
+        status, ret = model.step(points)
+        if status:
+            points, image = ret
+        else:
+            dragging = False
+            return
+        update_image(image)
+        for i in range(len(points)):
+            draw_point(*points[i], point_color[i%2])
         steps += 1
         dpg.set_value('steps', f'steps: {steps}')
 
@@ -120,7 +126,7 @@ with dpg.window(
     def stop_cb():
         global dragging
         dragging = False
-        print('stop_cb...')
+        print('stop dragging...')
 
     dpg.add_text('drag', pos=(5, 20))
     dpg.add_button(label="add point", width=80, pos=(70, 20), callback=add_point_cb)
