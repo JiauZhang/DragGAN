@@ -2,13 +2,25 @@
 
 # DragGAN
 Implementation of [DragGAN: Interactive Point-based Manipulation on the Generative Image Manifold](https://arxiv.org/abs/2305.10973).
-
+## Install
+This application uses python2, if you don't have it please install. 
+Also this application require PyTorch and NumPy, you can install them with further commands:
+```shell 
+pip install numpy
+```
+*and*
 ```shell
-# gui
+pip install pytorch
+```
+*Install GUI library*
+```shell
 pip install dearpygui
-# run demo
+```
+Run Test program
+```shell
 python gui.py
 ```
+If you have any errors check *requirements.txt* with all versions of required packages
 
 <img src="./UI.png" width="600" alt="Demo UI"/>
 
